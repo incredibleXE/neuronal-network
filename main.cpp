@@ -6,13 +6,33 @@
 
 using namespace std;
 
+/**
+ * Neuronales Netz
+ */
 class NeuronalNetwork {
 public:
+    /**
+     * b_debug wird vom Konstruktor gesteuert
+     *  wenn true => train-function gibt JEDEN vector<vector<float>> auf der Konsole aus.
+     * deep_debug ist nur zum testen gedacht:
+     *  wenn true => die Berechnungsfunktionen geben die Eingabe- und Ausgabematrizen auf der Konsole aus
+     */
     bool b_debug = false, deep_debug = false;
 
     vector<vector<float>> v_weight_input_to_hidden,v_weight_hidden_to_output;
     float f_learning_rate;
 
+    /**
+     * Constructor
+     *
+     * Erstellt zufällige Gewichtungen für alle Knotenverbindungen.
+     *
+     * @param i_input_nodes Anzahl der Neuronen auf der Input Schicht
+     * @param i_hidden_nodes Anzahl der Neuronen auf der Hidden Schicht
+     * @param i_output_nodes Anzahl der Neuronen auf der Output Schicht
+     * @param learning_rate
+     * @param debug
+     */
     NeuronalNetwork(int i_input_nodes, int i_hidden_nodes, int i_output_nodes, float learning_rate, bool debug = false) {
         b_debug = debug;
         deep_debug = true;
@@ -39,6 +59,12 @@ public:
         output_matrix_to_console(v_weight_hidden_to_output,"v_weight_hidden_to_output");
     }
 
+    /**
+     * Trainiert das Neuronale Netz
+     *
+     * @param input_list vector<float> aller Inputs.
+     * @param target_list vector<float> aller Outputs.
+     */
     void train(vector<float> input_list,vector<float> target_list) {
         cout << "starting train\n" << "--------------" << endl;
 
@@ -88,10 +114,22 @@ public:
         return;
     }
 
+    /**
+     * sigmoide Aktivierungsfunktion
+     *
+     * @param x float Eingabewert
+     * @return float Rückgabewert der Funktion
+     */
     float activation_function(float x) {
         return 1/(1+exp(x));
     }
 
+    /**
+     * Ruft für jeden Wert in der übergebenen Matrize die @see activation_function() auf und speichert den Wert in Rückgabematrize.
+     *
+     * @param mat vector<vector<float>> Eingabematrize
+     * @return vector<vector<float>> Rückgabematrize
+     */
     vector<vector<float>> activation_function_mat(vector<vector<float>> mat) {
         vector<vector<float>> return_mat;
         unsigned long rows = count_rows(mat);
@@ -126,6 +164,13 @@ public:
         }
     }
 //private:
+    /**
+     * Gibt eine Zufallszahl im gegebenen Intervall
+     *
+     * @param a Minimalwert
+     * @param b Maximalwert
+     * @return float Zufallswert zwischen den Parametern.
+     */
     float random_float(float a, float b) {
         float random = ((float) rand()) / (float) RAND_MAX;
         float diff = b - a;
@@ -133,6 +178,12 @@ public:
         return a + r;
     }
 
+    /**
+     * Transkription einer vector<float> Matrize
+     *
+     * @param input_list
+     * @return input_list.T
+     */
     vector<vector<float>> T(vector<float> input_list) {
         vector<vector<float>> outputs;
         outputs.resize(input_list.size());
@@ -144,6 +195,12 @@ public:
         return outputs;
     }
 
+    /**
+     * Transkription einer vector<vector<float>> Matrize
+     *
+     * @param input_list
+     * @return input_list.T
+     */
     vector<vector<float>> T(vector<vector<float>> mat) {
         unsigned long rows = count_rows(mat);
         unsigned long cols = count_cols(mat);
@@ -161,6 +218,13 @@ public:
         return return_mat;
     }
 
+    /**
+     * Multipliziert zwei Matrizen
+     *
+     * @param a erste Matrize
+     * @param b zweite Matrize
+     * @return berechnete Matrize
+     */
     vector<vector<float>> multi(vector<vector<float>> a, vector<vector<float>> b) {
         if(deep_debug) {
             output_matrix_to_console(a, "multi->a");
@@ -202,6 +266,14 @@ public:
         return return_vector;
     }
 
+    /**
+     * Subtrahiert Matrize b von float a
+     * (baut Matrize für a auf und ruft subt() mit zwei Matrizen auf)
+     *
+     * @param a Minuend float wert
+     * @param b Subtrahend Matrize
+     * @return Subtraktionsmatrize
+     */
     vector<vector<float>> subt(float a, vector<vector<float>> b) {
         unsigned long cols_b = count_cols(b);
         unsigned long rows_b = count_rows(b);
@@ -219,6 +291,13 @@ public:
         return subt(tmp_return_mat,b);
     }
 
+    /**
+     * Subtrahiert Matrize b von Matrize a
+     *
+     * @param a Minuend
+     * @param b Subtrahend
+     * @return Subtraktionsmatrize
+     */
     vector<vector<float>> subt(vector<vector<float>> a, vector<vector<float>> b) {
         if(deep_debug) {
             output_matrix_to_console(a, "subtraktion->a");
@@ -250,6 +329,13 @@ public:
         return return_mat;
     }
 
+    /**
+     * Multipliziert zwei Matrizen
+     *
+     * @param a Matrizenfaktor
+     * @param b Matrizenfaktor
+     * @return Multiplikationsmatrize
+     */
     vector<vector<float>> multi(vector<vector<float>> a, float b) {
         if(deep_debug) {
             output_matrix_to_console(a, "multi_with_float->a");
@@ -270,10 +356,22 @@ public:
         return return_mat;
     }
 
+    /**
+     * Zählt die Reihen einer Matrize
+     *
+     * @param mat zu untersuchende Matrize
+     * @return Anzahl der Reihen der Matrize
+     */
     unsigned long count_rows(vector<vector<float>> mat) {
         return mat.size();
     }
 
+    /**
+     * Zählt die Spalten einer Matrize
+     *
+     * @param mat zu untersuchende Matrize
+     * @return Anzahl der Spalten der Matrize
+     */
     unsigned long count_cols(vector<vector<float>> mat) {
         if(mat.size() == 0) {
             return 0;
