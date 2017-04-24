@@ -33,15 +33,15 @@ public:
      * @param learning_rate
      * @param debug
      */
-    NeuronalNetwork(int i_input_nodes, int i_hidden_nodes, int i_output_nodes, double learning_rate, bool debug = false) {
+    NeuronalNetwork(unsigned long i_input_nodes, unsigned long i_hidden_nodes, unsigned long i_output_nodes, double learning_rate, bool debug = false) {
         b_debug = debug;
         deep_debug = true;
         f_learning_rate = learning_rate;
 
         // input zu hidden layer Gewichtungen
-        v_weight_input_to_hidden.resize((unsigned long) i_input_nodes);
+        v_weight_input_to_hidden.resize(i_input_nodes);
         for(int i = 0; i < i_input_nodes; ++i) {
-            v_weight_input_to_hidden[i].resize((unsigned long) i_hidden_nodes);
+            v_weight_input_to_hidden[i].resize(i_hidden_nodes);
             for(int a = 0; a < i_hidden_nodes; ++a) {
                 v_weight_input_to_hidden[i][a] = random_double(-1.f,1.f);
             }
@@ -49,10 +49,10 @@ public:
         output_matrix_to_console(v_weight_input_to_hidden,"v_weight_input_to_hidden");
 
         // hidden zu output layer Gewichtungen
-        v_weight_hidden_to_output.resize((unsigned long) i_hidden_nodes);
+        v_weight_hidden_to_output.resize(i_hidden_nodes);
         for(int i = 0; i < i_hidden_nodes; ++i) {
-            v_weight_hidden_to_output[i].resize((unsigned long) i_output_nodes);
-            for(int a = 0; a < (unsigned long) i_output_nodes; ++a) {
+            v_weight_hidden_to_output[i].resize(i_output_nodes);
+            for(int a = 0; a < i_output_nodes; ++a) {
                 v_weight_hidden_to_output[i][a] = random_double(-1.f,1.f);
             }
         }
@@ -383,6 +383,7 @@ public:
 int main() {
     NeuronalNetwork nn = {3,3,3,0.1f, true};
 
+    // zum Testen der Multifunktion
     //nn.multi({{1,1,1},{1,1,1}},{{1,1},{1,1},{3,2}});  // 5|4
                                                         // 5|4
     nn.train({1,2,3},{4,5,6});
