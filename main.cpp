@@ -6,6 +6,8 @@
 
 using namespace std;
 
+typedef vector<vector<double>> Matrix;
+
 /**
  * Neuronales Netz
  */
@@ -13,13 +15,13 @@ class NeuronalNetwork {
 public:
     /**
      * b_debug wird vom Konstruktor gesteuert
-     *  wenn true => train-function gibt JEDEN vector<vector<double>> auf der Konsole aus.
+     *  wenn true => train-function gibt JEDEN Matrix auf der Konsole aus.
      * deep_debug ist nur zum testen gedacht:
      *  wenn true => die Berechnungsfunktionen geben die Eingabe- und Ausgabematrizen auf der Konsole aus
      */
-    bool b_debug = false, deep_debug = false;
+    bool b_debug = false, b_deep_debug = false;
 
-    vector<vector<double>> v_weight_input_to_hidden,v_weight_hidden_to_output;
+    Matrix v_weight_input_to_hidden,v_weight_hidden_to_output;
     double f_learning_rate;
 
     /**
@@ -35,7 +37,7 @@ public:
      */
     NeuronalNetwork(unsigned long i_input_nodes, unsigned long i_hidden_nodes, unsigned long i_output_nodes, double learning_rate, bool debug = false) {
         b_debug = debug;
-        deep_debug = true;
+        b_deep_debug = true;
         f_learning_rate = learning_rate;
 
         // input zu hidden layer Gewichtungen
@@ -59,6 +61,10 @@ public:
         output_matrix_to_console(v_weight_hidden_to_output,"v_weight_hidden_to_output");
     }
 
+    ~NeuronalNetwork() {
+
+    }
+
     /**
      * Trainiert das Neuronale Netz
      *
@@ -69,22 +75,22 @@ public:
         cout << "starting train\n" << "--------------" << endl;
 
         // Transponieren der vectoren
-        vector<vector<double>> inputs = T(input_list);
+        Matrix inputs = T(input_list);
         output_matrix_to_console(inputs,"train->inputs");
-        vector<vector<double>> targets = T(target_list);
+        Matrix targets = T(target_list);
         output_matrix_to_console(targets,"train->targets");
 
         // === Forward pass === //
         // hidden schicht
-        vector<vector<double>> hidden_inputs = multi(v_weight_input_to_hidden,inputs);
+        Matrix hidden_inputs = multi(v_weight_input_to_hidden,inputs);
         output_matrix_to_console(hidden_inputs,"train->hidden_inputs");
-        vector<vector<double>> hidden_outputs = activation_function_mat(hidden_inputs);
+        Matrix hidden_outputs = activation_function_mat(hidden_inputs);
         output_matrix_to_console(hidden_outputs,"train->hidden_outputs");
 
         // output schicht
-        vector<vector<double>> output_inputs = multi(v_weight_hidden_to_output,hidden_outputs);
+        Matrix output_inputs = multi(v_weight_hidden_to_output,hidden_outputs);
         output_matrix_to_console(output_inputs,"train->output_inputs");
-        vector<vector<double>> output_outputs = output_inputs;
+        Matrix output_outputs = output_inputs;
         output_matrix_to_console(output_outputs,"train->output_outputs (= output_input)");
 
         /** @fgr
@@ -100,15 +106,15 @@ public:
 
         // === back propagation == //
         // output schicht
-        vector<vector<double>> output_errors = multi(subt(targets,output_outputs),1.f);
+        Matrix output_errors = multi(subt(targets,output_outputs),1.f);
         output_matrix_to_console(output_errors,"train->output_errors");
 
         // hidden schicht
         // TODO: im Beispiel output_errors * v_weight_hidden_to_output, geht aber aufgrund von Matrixregeln nicht. Richtig?
-        vector<vector<double>> hidden_errors = multi(T(output_errors),v_weight_hidden_to_output);
+        Matrix hidden_errors = multi(T(output_errors),v_weight_hidden_to_output);
         output_matrix_to_console(hidden_errors,"train->hidden_errors");
 
-        vector<vector<double>> hidden_grad = multi(multi(T(hidden_errors),hidden_outputs),subt(-1.f,hidden_outputs));
+        Matrix hidden_grad = multi(multi(T(hidden_errors),hidden_outputs),subt(-1.f,hidden_outputs));
         output_matrix_to_console(hidden_grad,"train->hidden_grad");
 
         return;
@@ -127,11 +133,11 @@ public:
     /**
      * Ruft für jeden Wert in der übergebenen Matrize die @see activation_function() auf und speichert den Wert in Rückgabematrize.
      *
-     * @param mat vector<vector<double>> Eingabematrize
-     * @return vector<vector<double>> Rückgabematrize
+     * @param mat Matrix Eingabematrize
+     * @return Matrix Rückgabematrize
      */
-    vector<vector<double>> activation_function_mat(vector<vector<double>> mat) {
-        vector<vector<double>> return_mat;
+    Matrix activation_function_mat(Matrix mat) {
+        Matrix return_mat;
         unsigned long rows = count_rows(mat);
         unsigned long cols = count_cols(mat);
 
@@ -143,14 +149,14 @@ public:
             }
         }
 
-        if(deep_debug) {
+        if(b_deep_debug) {
             output_matrix_to_console(return_mat, "activation_function_mat->return_mat");
         }
 
         return return_mat;
     }
 
-    void output_matrix_to_console(vector<vector<double>> mat, string name = "Unknown") {
+    void output_matrix_to_console(Matrix mat, string name = "Unknown") {
         if(b_debug) {
             cout << "--------------------------------------------" << endl
                  << "Print "<< name << "-Matrix " << count_rows(mat) << "x" << count_cols(mat) << endl
@@ -184,8 +190,9 @@ public:
      * @param input_list
      * @return input_list.T
      */
-    vector<vector<double>> T(vector<double> input_list) {
-        vector<vector<double>> outputs;
+    Matrix T(vector<double> input_list) {
+        //std::shared_ptr<Matrix> outputs = std::make_shared<Matrix>({{0}});
+        Matrix outputs;
         outputs.resize(input_list.size());
         for(int i=0;i < input_list.size();++i) {
             outputs[i].resize(1);
@@ -196,16 +203,16 @@ public:
     }
 
     /**
-     * Transkription einer vector<vector<double>> Matrize
+     * Transkription einer Matrix Matrize
      *
      * @param input_list
      * @return input_list.T
      */
-    vector<vector<double>> T(vector<vector<double>> mat) {
+    Matrix T(Matrix mat) {
         unsigned long rows = count_rows(mat);
         unsigned long cols = count_cols(mat);
 
-        vector<vector<double>> return_mat = {{0}};
+        Matrix return_mat = {{0}};
 
         return_mat.resize(cols);
         for(int i=0; i < rows; ++i) {
@@ -219,20 +226,45 @@ public:
     }
 
     /**
+     * Subtrahiert Matrize b von double a
+     * (baut Matrize für a auf und ruft subt() mit zwei Matrizen auf)
+     *
+     * @param a Minuend double wert
+     * @param b Subtrahend Matrize
+     * @return Subtraktionsmatrize
+     */
+    Matrix subt(double a, Matrix b) {
+        unsigned long cols_b = count_cols(b);
+        unsigned long rows_b = count_rows(b);
+
+        Matrix tmp_return_mat = {{0}};
+
+        tmp_return_mat.resize(rows_b);
+        for(int i=0; i < rows_b; ++i) {
+            tmp_return_mat[i].resize(cols_b);
+            for (int j = 0; j < cols_b; ++j) {
+                tmp_return_mat[i][j] = a;
+            }
+        }
+
+        return subt(tmp_return_mat,b);
+    }
+
+    /**
      * Multipliziert zwei Matrizen
      *
      * @param a erste Matrize
      * @param b zweite Matrize
      * @return berechnete Matrize
      */
-    vector<vector<double>> multi(vector<vector<double>> a, vector<vector<double>> b) {
-        if(deep_debug) {
+    Matrix multi(Matrix a, Matrix b) {
+        if(b_deep_debug) {
             output_matrix_to_console(a, "multi->a");
             output_matrix_to_console(b, "multi->b");
         }
 
         // @fgr: ist {{}} nötig?
-        vector<vector<double>> return_vector = {{0}};
+        Matrix return_vector = {{0}};
 
         // falls ein vector von beiden leer ist => gib einen leeren vector zurück
         if(a.size() == 0 or b.size() == 0) {
@@ -260,35 +292,10 @@ public:
             }
         }
 
-        if(deep_debug) {
+        if(b_deep_debug) {
             output_matrix_to_console(return_vector, "multi->return_vector");
         }
         return return_vector;
-    }
-
-    /**
-     * Subtrahiert Matrize b von double a
-     * (baut Matrize für a auf und ruft subt() mit zwei Matrizen auf)
-     *
-     * @param a Minuend double wert
-     * @param b Subtrahend Matrize
-     * @return Subtraktionsmatrize
-     */
-    vector<vector<double>> subt(double a, vector<vector<double>> b) {
-        unsigned long cols_b = count_cols(b);
-        unsigned long rows_b = count_rows(b);
-
-        vector<vector<double>> tmp_return_mat = {{0}};
-
-        tmp_return_mat.resize(rows_b);
-        for(int i=0; i < rows_b; ++i) {
-            tmp_return_mat[i].resize(cols_b);
-            for (int j = 0; j < cols_b; ++j) {
-                tmp_return_mat[i][j] = a;
-            }
-        }
-
-        return subt(tmp_return_mat,b);
     }
 
     /**
@@ -298,8 +305,8 @@ public:
      * @param b Subtrahend
      * @return Subtraktionsmatrize
      */
-    vector<vector<double>> subt(vector<vector<double>> a, vector<vector<double>> b) {
-        if(deep_debug) {
+    Matrix subt(Matrix a, Matrix b) {
+        if(b_deep_debug) {
             output_matrix_to_console(a, "subtraktion->a");
             output_matrix_to_console(b, "subtraktion->b");
         }
@@ -307,7 +314,7 @@ public:
         unsigned long cols_a = count_cols(a), cols_b = count_cols(b);
         unsigned long rows_a = count_rows(a), rows_b = count_rows(b);
 
-        vector<vector<double>> return_mat = {{0}};
+        Matrix return_mat = {{0}};
 
         if(cols_a != cols_b || rows_b != rows_a) {
             // matrizen lassen sich nicht subtrahieren da sie nicht vom gleichen Typ sind
@@ -322,7 +329,7 @@ public:
             }
         }
 
-        if(deep_debug) {
+        if(b_deep_debug) {
             output_matrix_to_console(return_mat, "subtraktion->return_mat");
         }
 
@@ -336,15 +343,15 @@ public:
      * @param b Matrizenfaktor
      * @return Multiplikationsmatrize
      */
-    vector<vector<double>> multi(vector<vector<double>> a, double b) {
-        if(deep_debug) {
+    Matrix multi(Matrix a, double b) {
+        if(b_deep_debug) {
             output_matrix_to_console(a, "multi_with_double->a");
         }
 
         unsigned long cols = count_cols(a);
         unsigned long rows = count_rows(a);
 
-        vector<vector<double>> return_mat = {{0}};
+        Matrix return_mat = {{0}};
         return_mat.resize(rows);
         for(int i=0; i < rows; ++i) {
             return_mat[i].resize(cols);
@@ -362,7 +369,7 @@ public:
      * @param mat zu untersuchende Matrize
      * @return Anzahl der Reihen der Matrize
      */
-    unsigned long count_rows(vector<vector<double>> mat) {
+    unsigned long count_rows(Matrix mat) {
         return mat.size();
     }
 
@@ -372,7 +379,7 @@ public:
      * @param mat zu untersuchende Matrize
      * @return Anzahl der Spalten der Matrize
      */
-    unsigned long count_cols(vector<vector<double>> mat) {
+    unsigned long count_cols(Matrix mat) {
         if(mat.size() == 0) {
             return 0;
         }
@@ -386,6 +393,10 @@ int main() {
     // zum Testen der Multifunktion
     //nn.multi({{1,1,1},{1,1,1}},{{1,1},{1,1},{3,2}});  // 5|4
                                                         // 5|4
+
+    // wie implementieren?
+    //std::shared_ptr<Matrix> return_mat = std::make_shared<Matrix>({{0}});
+
     nn.train({1,2,3},{4,5,6});
 
     return 0;
