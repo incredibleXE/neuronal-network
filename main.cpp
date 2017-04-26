@@ -27,10 +27,10 @@ public:
 
     void set(vector<double> list) {
         v_mat = {{0}};
-        resize_rows(list.size());
-        resize_cols(1);
+        resize_rows(1);
+        resize_cols(list.size());
         for (unsigned long i = 0; i < list.size(); ++i) {
-            v_mat[i][0] = list[i];
+            v_mat[0][i] = list[i];
         }
     }
 
@@ -136,7 +136,14 @@ public:
         Matrix2d return_mat;
 
         if(cols_a != cols_b || rows_b != rows_a) {
-            // matrizen lassen sich nicht subtrahieren da sie nicht vom gleichen Typ sind
+            // falls eine der Matrizen 1x1 ist, wird wert genommen und subtrahiert
+            if(cols_a == 1 && rows_a == 1) {
+                return b - a.v_mat[0][0];
+            }
+
+            if(cols_b == 1 && rows_b == 1) {
+                return a - b.v_mat[0][0];
+            }
             throw std::invalid_argument("Matrix a und b sind nicht vom gleichen Typ");
         }
 
@@ -170,25 +177,27 @@ public:
         unsigned long rows = a.count_rows();
         unsigned long cols = b.count_cols();
 
+        //cout << "A:" << endl << a << endl << "B:" << endl << b;
         // Berechnung: pro Feld: Summe(a(ij)*b(jk))
-        return_vector.resize(rows,1);
-        cout << "Reihen: " << rows << "\n";
-        // alle Reihen von a
-        //
-        // TODO: FEHLER
-        //
-        for (int j = 0; j < a.count_cols(); ++j) {
-            return_vector.v_mat[j][0] = 0;
-            for (int k = 0; k < a.count_rows(); ++k) {
-                cout << return_vector.v_mat[j][0]  << " + "
-                     << "(" << a.v_mat[k][j] << "*" << b.v_mat[k][0] << ")";
+        return_vector.resize(rows,cols);
+        //cout << "Reihen: " << rows << endl << "Spalten: "<< cols << "\n";
 
-                return_vector.v_mat[j][0] += (a.v_mat[k][j] * b.v_mat[k][0]);
+        for (int j = 0; j < return_vector.count_rows(); ++j) {
+            for (int k = 0; k < return_vector.count_cols(); ++k) {
+                for (int i = 0; i < a.count_cols(); ++i) {
+                    double a_val = a.v_mat[j][i];
+                    double b_val = b.v_mat[i][k];
 
-                cout << " = " << return_vector.v_mat[j][0] << "\n";
+                    //cout << return_vector.v_mat[j][k] << " + (" << a_val << " * " << b_val << ")";
+
+                    return_vector.v_mat[j][k] += (a_val * b_val);
+
+                    //cout << " = "<< return_vector.v_mat[j][k] << "\n";
+                }
+                //cout << "---\n";
             }
-            cout << "------" << endl;
         }
+        //cout << "Return: " << return_vector;
 
         return std::make_shared<Matrix2d>(return_vector);
     }
@@ -245,17 +254,17 @@ public:
         f_learning_rate = learning_rate;
 
         // input zu hidden layer Gewichtungen
-        v_weight_input_to_hidden.resize(i_input_nodes,i_hidden_nodes);
-        for(int i = 0; i < i_input_nodes; ++i) {
-            for(int a = 0; a < i_hidden_nodes; ++a) {
+        v_weight_input_to_hidden.resize(i_hidden_nodes,i_input_nodes);
+        for(int i = 0; i < i_hidden_nodes; ++i) {
+            for(int a = 0; a < i_input_nodes; ++a) {
                 v_weight_input_to_hidden.v_mat[i][a] = random_double(-1.f,1.f);
             }
         }
 
         // hidden zu output layer Gewichtungen
-        v_weight_hidden_to_output.resize(i_hidden_nodes,i_output_nodes);
-        for(int i = 0; i < i_hidden_nodes; ++i) {
-            for(int a = 0; a < i_output_nodes; ++a) {
+        v_weight_hidden_to_output.resize(i_output_nodes,i_hidden_nodes);
+        for(int i = 0; i < i_output_nodes; ++i) {
+            for(int a = 0; a < i_hidden_nodes; ++a) {
                 v_weight_hidden_to_output.v_mat[i][a] = random_double(-1.f,1.f);
             }
         }
@@ -273,9 +282,11 @@ public:
         // Transponieren der vectoren, wie geht das besser?
         Matrix2d inputs;
         inputs.set(input_list);
+        inputs = *inputs.T();
 
         Matrix2d targets;
         targets.set(target_list);
+        targets = *targets.T();
 
         //cout << "Forward pass \n";
         // === Forward pass === //
@@ -287,37 +298,64 @@ public:
         shared_ptr<Matrix2d> hidden_outputs = activation_function_mat(*hidden_inputs);
 
         // output schicht
-        cout << *v_weight_hidden_to_output.T();
-        cout << *hidden_outputs;
-        shared_ptr<Matrix2d> output_inputs = *v_weight_hidden_to_output.T() * *hidden_outputs;
+        //cout << *v_weight_hidden_to_output.T();
+        //cout << *hidden_outputs;
+        shared_ptr<Matrix2d> output_inputs = v_weight_hidden_to_output * *hidden_outputs;
 
         shared_ptr<Matrix2d> output_outputs = output_inputs;
 
-        return;
-        cout << "after forward pass: \n" << *output_outputs;
+        cout << "after forward pass: output from output-layer \n" << *output_outputs;
 
-        cout << "\n\nback propagation start\n";
+        cout << "\n\nback propagation start\n\n";
         // === back propagation == //
         // output schicht
-        shared_ptr<Matrix2d> output_errors = *(targets - *output_outputs) * 1.f;
+        shared_ptr<Matrix2d> subt_targets_output_outputs = targets - *output_outputs;
+        //cout << *subt_targets_output_outputs;
+        shared_ptr<Matrix2d> output_errors = *subt_targets_output_outputs * 1.f;
 
         //cout << *output_errors;
 
         // hidden schicht
-        // TODO: im Beispiel output_errors * v_weight_hidden_to_output, geht aber aufgrund von Matrixregeln nicht. Richtig?
-        shared_ptr<Matrix2d> hidden_errors = *(*output_errors).T() * v_weight_hidden_to_output;
-        //cout << hidden_errors;
+        shared_ptr<Matrix2d> hidden_errors = *output_errors * v_weight_hidden_to_output;
+        //cout << *hidden_errors;
 
         //shared_ptr<Matrix> output_errors_T = T(*output_errors);
         //shared_ptr<Matrix> hidden_errors = multi(*output_errors_T,v_weight_hidden_to_output);
 
         shared_ptr<Matrix2d> hidden_errors_T = (*hidden_errors).T();
-        shared_ptr<Matrix2d> subt_hidden_outputs = *hidden_outputs - -1.f;
-        shared_ptr<Matrix2d> multi_hidden_errors_hidden_outputs = (*hidden_errors * *hidden_outputs);
-        shared_ptr<Matrix2d> hidden_grad = *multi_hidden_errors_hidden_outputs * *(*subt_hidden_outputs).T();
+        // müsste 1 - hidden_outputs sein, aber das kann ich nicht :D => (hidden_outputs - 1) * (-1)
+        shared_ptr<Matrix2d> subt_hidden_outputs = *(*hidden_outputs - 1.f) * (-1.f);
+        shared_ptr<Matrix2d> multi_hidden_errors_hidden_outputs = (*hidden_errors_T * *hidden_outputs);
 
-        cout << "hidden grad" << *hidden_grad;
+        // TODO: warum muss ich hier Transponieren?
+        shared_ptr<Matrix2d> hidden_grad = *(*multi_hidden_errors_hidden_outputs).T() * *subt_hidden_outputs;
+
+        v_weight_hidden_to_output = *(*(*output_errors * *(*hidden_outputs).T()) * f_learning_rate);
+        v_weight_input_to_hidden = *(*(*hidden_grad * *(inputs).T()) * f_learning_rate);
+
+        cout << "after back propagation: hidden grad\n" << *hidden_grad;
         return;
+    }
+
+    Matrix2d run(vector<double> input_list) {
+        cout << "\n\n\n" << "================\n"
+                         << "   start run    \n"
+                         << "================\n";
+
+        // Transponieren der vectoren, wie geht das besser?
+        Matrix2d inputs;
+        inputs.set(input_list);
+        inputs = *inputs.T();
+
+        // hidden layer
+        shared_ptr<Matrix2d> hidden_inputs = v_weight_input_to_hidden * inputs;
+        return v_weight_input_to_hidden;
+        shared_ptr<Matrix2d> hidden_outputs = activation_function_mat(*hidden_inputs);
+
+        // output layer
+        shared_ptr<Matrix2d> output_outputs = v_weight_hidden_to_output * *hidden_outputs;
+
+        return *output_outputs;
     }
 
     /**
@@ -373,6 +411,8 @@ int main() {
 
     nn.train({1,2,3},{4,5,6});
 
+    Matrix2d mat = nn.run({1,2,3});
+    cout << mat;
 
 
     return 0;
