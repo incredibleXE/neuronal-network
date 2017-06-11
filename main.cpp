@@ -116,7 +116,8 @@ int main() {
     // Anzahl der Hidden und Output Neuronen
     unsigned int hidden_nodes = 25, output_nodes = 1;
     // Pfad zur CSV Datei
-    string data_path = "/home/incrediblexe/projects/clion/neuronal-network/data/hour.csv";
+    /*string data_path = "/home/incrediblexe/projects/clion/neuronal-network/data/hour.csv";*/
+    string data_path = "../data/hour.csv";
     // input und target matrizen
     matrix<double> m_csv_input(17379,8);
     matrix<double> m_train_features,m_train_targets,
