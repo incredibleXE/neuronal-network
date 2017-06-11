@@ -18,11 +18,11 @@ std::vector<string> explode(string const & s, char delim)
     return result;
 }
 
-int random_int(int a, int b) {
+matrix<double>::size_type random_int(matrix<double>::size_type a,matrix<double>::size_type b) {
     random_device rd;  //Will be used to obtain a seed for the random number engine
     mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()
     uniform_real_distribution<> dis(a, b);
-    return (int) dis(gen);
+    return (matrix<double>::size_type) dis(gen);
 }
 
 double math_mean(std::vector<double> vec) {
@@ -66,13 +66,13 @@ double MSE(matrix<double> y, matrix<double> Y) {
     if(y.size2() != Y.size1())
         throw invalid_argument("die beiden Eingabevectoren müssen die gleiche Größe haben!");
 
-    std::vector<double> v_ret(y.size2());
-    for(matrix<double>::size_type ds = 0; ds < v_ret.size();ds++) {
+    double ret_val = 0;
+    for(matrix<double>::size_type ds = 0; ds < y.size2();ds++) {
         //cout << pow(y(0,ds)-Y(ds,2),2) << " = " << y(0,ds) << "-" << Y(ds,2)<< "^2" << endl;
-        v_ret[ds] = pow(y(0,ds)-Y(ds,2),2);
+        ret_val += pow(y(0,ds)-Y(ds,2),2);
     }
 
-    return math_mean(v_ret);
+    return ret_val / y.size2();
 }
 
 std::vector<double> get_vec(matrix<double> mat,matrix<double>::size_type row) {
@@ -92,9 +92,9 @@ std::vector<double> get_vec(matrix<double> mat,matrix<double>::size_type row) {
     *//*std::vector<double> t = {8,7,9,10,6};
     cout << math_mean(t) << endl;
     cout << varianz(t) << endl;
-    cout << std_varianz(t);*//*
+    cout << std_varianz(t);
 
-    *//*while(true) {
+    while(true) {
         cout << random_int(0,15439) << endl;
     }*//*
 
@@ -104,15 +104,13 @@ int main() {
     /*
      * Vars
      */
-    // wenn true, kommt es nur zu einer Konsolenausgabe (erste Zeile ist der Tabellenkopf)
-    bool ignore_first_line = true;
     // Zeilenendzeichen
     char line_end = '\r',
         // Comma Seperated => ',' Trennzeichen für Daten einer Zeile
          explode_char=',';
 
     // Durchläufe
-    unsigned int epochs = 5000, train_epochs = 128;
+    matrix<double>::size_type epochs = 500, train_epochs = 500;
     // Lernrate
     double lr = 0.005;
     // Anzahl der Hidden und Output Neuronen
@@ -124,6 +122,8 @@ int main() {
     matrix<double> m_train_features,m_train_targets,
                     m_test_features,m_test_targets,
                     m_val_features,m_val_targets;
+
+    std::vector<double> v_val_loss,v_train_loss;
 
     /**
      * 0 => wird ignoriert
@@ -149,18 +149,12 @@ int main() {
             1       //cnt
     };
 
-    /**
-     * 0 => wird ignoriert
-     * 1 => input_list
-     * 2 => target_list
-     */
-    int input_target_selector[] = {
-            1,1,1,1,1,2,2,2
-    };
-
     /*
      * Einlesen der CSV Datei
      */
+    cout << "start reading file: " << data_path << endl;
+    clock_t start_reading = clock();
+    double elapsed_reading = 0;
     ifstream csv_read;
     csv_read.open(data_path, ios::in);
     matrix<double>::size_type i_lines = 0;
@@ -211,7 +205,12 @@ int main() {
 
         throw invalid_argument( "Fehler beim Lesen der Datei! Ein allgemeiner Fehler ist aufgetreten." );
     }
+    elapsed_reading = (float)(clock() - start_reading) / CLOCKS_PER_SEC;
+    cout << "finished reading in " << elapsed_reading << "s" << endl;
 
+    cout << "prepare data for NN" << endl;
+    clock_t start_preparing = clock();
+    double elapsed_preparing;
     /*cout << m_csv_input << endl;*/
 
     /*
@@ -303,16 +302,22 @@ int main() {
     cout << "m_test_features:   " << m_test_features.size1()<<"  |"<<m_test_features.size2()<<endl;
     cout << "m_test_targets:    " << m_test_targets.size1()<<"  |"<<m_test_targets.size2()<<endl;*/
 
-    neuronal_network nn = {m_train_features.size2(),hidden_nodes,output_nodes,lr};
+    elapsed_preparing = (float)(clock() - start_preparing) / CLOCKS_PER_SEC;
+    cout << "finished preparing data in: " << elapsed_preparing << "s" << endl;
+
+    neuronal_network nn = {m_train_features.size2(),hidden_nodes,output_nodes,lr,-1,1};
 
     // Zeitanalyse
-    clock_t start;
-    float elapsed;
+    clock_t start, start_train, start_test, start_val, start_sum;
+    float elapsed, elapsed_train,elapsed_test,elapsed_val,elapsed_sum;
     start = clock();
 
+    matrix<double>::size_type l_start = 0, l_end = m_test_features.size1()-train_epochs;
     for(unsigned int e=0;e <= epochs;e++) {
         // die ersten 128 (train_epochs) Zeilen auslesen
-        matrix<double>::size_type coincidence = random_int(0,m_test_features.size1()-train_epochs);
+
+        start_train = start_sum = clock();
+        matrix<double>::size_type coincidence = random_int(l_start,l_end);
         for(matrix<double>::size_type row=0;row <= train_epochs && row+coincidence < m_test_features.size1();row++) {
             matrix<double> m_input_tupel(1,m_test_features.size2());
             for(matrix<double>::size_type val=0;val < m_input_tupel.size2();val++) {
@@ -321,20 +326,70 @@ int main() {
 
             nn.train(m_input_tupel, {m_test_targets(row,2)});
         }
+        elapsed_train = (float)(clock() - start_train) / CLOCKS_PER_SEC;
 
+        start_test = clock();
         double train_loss = MSE(nn.run(m_train_features),m_train_targets);
-        double val_loss = MSE(nn.run(m_val_features),m_val_targets);
+        elapsed_test = (float)(clock() - start_test) / CLOCKS_PER_SEC;
 
-        if((e % 100) == 0 || e < 5) {
-            float val = (100 * e / epochs);
-            cout << endl << "Progress: " << val
-                 << "% ... Train loss: " << train_loss
-                 << " ... Validation loss: " << val_loss;
+        start_val = clock();
+        double val_loss = MSE(nn.run(m_val_features),m_val_targets);
+        elapsed_val = (float)(clock() - start_val) / CLOCKS_PER_SEC;
+
+        v_train_loss.push_back(train_loss);
+        v_val_loss.push_back(val_loss);
+
+
+        elapsed_sum = (float)(clock() - start_sum) / CLOCKS_PER_SEC;
+        if((e % 1) == 0 || e < 5) {
+            float val = (100 * e / static_cast< float >(epochs));
+            cout << endl << "Train loss: " << train_loss
+                 << " . Validation loss: " << val_loss
+                 << " . Train sec: " << elapsed_train
+                 << "s . Test sec: " << elapsed_test
+                 << "s . Val sec: " << elapsed_val
+                 << "s . measured sum sec: " << elapsed_sum
+                 << "s (math sum: " << elapsed_val + elapsed_test + elapsed_train << "s ) " << val << "%";
         }
+
     }
 
     elapsed = (float)(clock() - start) / CLOCKS_PER_SEC;
-    cout << "fertig - benötigte Zeit: " << elapsed << endl;
+    cout << endl << "finished in: " << elapsed << "s (" << elapsed/60 << "min)" << endl;
+    cout << endl << "average losses: "<< endl << "       train:" << math_mean(v_train_loss) << endl
+         << "         val:" << math_mean(v_val_loss) << endl;
+
+    int ask = 1;
+    while (ask == 1) {
+        double yr,holiday,temp,hum,windspeed;
+        cout << "yr [0|1]!" << endl;
+        cin >> yr;
+        cout << "holiday [0|1]!" << endl;
+        cin >> holiday;
+        cout << "temp [0..1)!" << endl;
+        cin >> temp;
+        cout << "hum [0..1]!" << endl;
+        cin >> hum;
+        cout << "windspeed [0..!" << endl;
+        cin >> windspeed;
+
+        matrix<double> m_input_from_io(1,5);
+        m_input_from_io(0,0) = yr;
+        m_input_from_io(0,1) = holiday;
+        m_input_from_io(0,2) = (temp - v_mean[2]) / v_std[2];
+        m_input_from_io(0,3) = (temp - v_mean[3]) / v_std[3];
+        m_input_from_io(0,4) = (temp - v_mean[4]) / v_std[4];
+
+        matrix<double> m_return_val = nn.run(m_input_from_io);
+        for(matrix<double>::size_type row = 0; row < m_return_val.size1(); row++) {
+            for(matrix<double>::size_type col = 0; col < m_return_val.size2(); col++) {
+                cout << "Fahrad cnt: " << sqrt(pow(m_return_val(row,col) * v_std[7] - v_mean[7],2)) << endl;
+            }
+        }
+
+        cout << "weiter? [0 => nein |1 => ja]" << endl;
+        cin >> ask;
+    }
 
     return 0;
 }

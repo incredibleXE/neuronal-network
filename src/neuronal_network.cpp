@@ -18,11 +18,12 @@ public:
     neuronal_network (unsigned long l_input_nodes,
                       unsigned long l_hidden_nodes,
                       unsigned long l_output_nodes,
-                      double learning_rate) : m_weight_input_to_hidden{l_hidden_nodes,l_input_nodes}, m_weight_hidden_to_output{l_output_nodes,l_hidden_nodes} {
+                      double learning_rate,double start=-.5,double end=.5) : m_weight_input_to_hidden{l_hidden_nodes,l_input_nodes}, m_weight_hidden_to_output{l_output_nodes,l_hidden_nodes} {
         d_learning_rate = learning_rate;
 
-        fill_random(&m_weight_input_to_hidden,-1.d,1.d);
-        fill_random(&m_weight_hidden_to_output,-1.d,1.d);
+
+        fill_random(&m_weight_input_to_hidden,start,end);
+        fill_random(&m_weight_hidden_to_output,start,end);
 
         /*std::cout << m_weight_input_to_hidden << std::endl;
         std::cout << m_weight_hidden_to_output << std::endl;*/
